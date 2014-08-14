@@ -11,6 +11,7 @@ as well as http://threejs.org/docs/index.html#Manual/Introduction/Creating_a_sce
 	</head>
 	<body>
 	<script src="js/three.min.js"></script>
+	<script src="js/OrbitControls.js"></script>
 	<script src="js/jquery.min.js"></script>
 	<script>
 	// settings //
@@ -43,13 +44,19 @@ as well as http://threejs.org/docs/index.html#Manual/Introduction/Creating_a_sce
 
 	scene.add(camera);
 
-	// light //
-	var pointLight = new THREE.PointLight(0xFFFFFF);
-	pointLight.position.x = 10;
-	pointLight.position.y = 50;
-	pointLight.position.z = 130;
+	// lights //
+	var light = new THREE.PointLight(0xFFFFFF);
+	light.position.set(10,50,130);
+	scene.add(light);
 
-	scene.add(pointLight);
+	light = new THREE.PointLight(0xFFFFFF);
+	light.position.set(-10,-50,-130);
+	scene.add(light);
+
+	// controls //
+	var controls = new THREE.OrbitControls(camera);
+	controls.damping = 0.2;
+	controls.addEventListener('change', render);
 
 	// renderer //
 	var renderer = new THREE.WebGLRenderer();
@@ -69,13 +76,30 @@ as well as http://threejs.org/docs/index.html#Manual/Introduction/Creating_a_sce
 	scene.add(Cube.MESH);
 
 	// render loop //
+	function animate() {
+		requestAnimationFrame(animate);
+		controls.update();
+	}
+	animate();
+
 	function render() {
-		requestAnimationFrame(render);
 		renderer.render(scene, camera);
-		Cube.MESH.rotation.x += 0.01;
-		Cube.MESH.rotation.y += 0.01;
 	}
 	render();
+
+	// event listeners //
+	window.addEventListener( 'resize', onWindowResize, false );
+
+	function onWindowResize() {
+		SceneSettings.WIDTH = window.innerWidth;
+		SceneSettings.HEIGHT = window.innerHeight;
+		CameraSettings.ASPECT = SceneSettings.WIDTH / SceneSettings.HEIGHT;
+		camera.updateProjectionMatrix();
+
+		renderer.setSize(SceneSettings.WIDTH, SceneSettings.HEIGHT);
+		render();
+	}
+
 	</script>
 </html>
 
