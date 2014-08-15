@@ -1,0 +1,200 @@
+<!-- modified from http://jsfiddle.net/SeNDk/55/ -->
+
+<html>
+	<head>
+		<title>Three.js Test</title>
+		<style>canvas { width: 100%; height: 100%; }</style>
+	</head>
+	<body>
+	<script src="js/three.min.js"></script>
+	<script src="js/OrbitControls.js"></script>
+	<script src="js/jquery.min.js"></script>
+	<script>
+	// settings //
+	var SceneSettings = {
+		WIDTH: window.innerWidth,
+		HEIGHT: window.innerHeight
+	}
+
+	var CameraSettings = {
+		VIEW_ANGLE: 45,
+		ASPECT: SceneSettings.WIDTH / SceneSettings.HEIGHT,
+		NEAR: 0.1,
+		FAR: 1000
+	}
+
+	// scene //
+	var scene = new THREE.Scene();
+	scene.fog = new THREE.FogExp2( 0xFFFFFF, 0.0015 );
+
+	// camera //
+	var camera = new THREE.PerspectiveCamera(
+		CameraSettings.VIEW_ANGLE,
+		CameraSettings.ASPECT,
+		CameraSettings.NEAR,
+		CameraSettings.FAR);
+
+	// the camera starts at (0,0,0), 
+	// so pull it back a little
+	camera.position.z = 950;
+	camera.lookAt(new THREE.Vector3(0,0,0));
+
+	scene.add(camera);
+
+	// lights //
+	var light = new THREE.PointLight(0xFFFFFF);
+	light.position.set(10,50,130);
+	scene.add(light);
+
+	light = new THREE.PointLight(0xFFFFFF);
+	light.position.set(-10,-50,-130);
+	scene.add(light);
+
+	// controls //
+	var controls = new THREE.OrbitControls(camera);
+	controls.damping = 0.2;
+	controls.addEventListener('change', render);
+
+	// renderer //
+	var renderer = new THREE.WebGLRenderer();
+	renderer.setSize(SceneSettings.WIDTH, SceneSettings.HEIGHT);
+	renderer.setClearColor( scene.fog.color, 1 );
+
+	document.body.appendChild(renderer.domElement);
+
+	// geometry //
+	var GridLine = {
+		// GEOMETRY: new THREE.BoxGeometry(SceneSettings.WIDTH,1,1),
+		GEOMETRY: null,
+		MATERIAL: new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.75 }),
+		DISPLAY_HEIGHT: 2 * 1000 * Math.tan(45 / 2 * (Math.PI / 180)),
+		DISPLAY_WIDTH: null,
+		MAX_X: null,
+		MIN_X: null,
+		MAX_Y: null,
+		MIN_Y: null,
+		MIN_Z: -1000,
+		MAX_Z: 100,
+		NUM_HORIZONTAL_LINES: 10,
+		NUM_VERTICAL_LINES: 10,
+		NUM_Z_LINES: 20,
+		BLEED_FACTOR: 2
+	}
+
+	GridLine.DISPLAY_WIDTH = GridLine.DISPLAY_HEIGHT * (SceneSettings.WIDTH / SceneSettings.HEIGHT);
+	GridLine.MAX_X = (GridLine.DISPLAY_WIDTH / 2) * (GridLine.BLEED_FACTOR/2);
+	GridLine.MIN_X = 0 - GridLine.MAX_X;
+	GridLine.MAX_Y = (GridLine.DISPLAY_HEIGHT / 2);
+	GridLine.MIN_Y = 0 - (GridLine.DISPLAY_HEIGHT / 2);
+	GridLine.NUM_VERTICAL_LINES = GridLine.NUM_HORIZONTAL_LINES * ( SceneSettings.WIDTH / SceneSettings.HEIGHT );
+
+	function getNWScreenVector() {
+		return new THREE.Vector3(GridLine.MIN_X, GridLine.MAX_Y, 0);
+	}
+
+	function getNEScreenVector() {
+		return new THREE.Vector3(GridLine.MAX_X, GridLine. MAX_Y, 0);
+	}
+
+	function getSWScreenVector() {
+		return new THREE.Vector3(GridLine.MIN_X, GridLine.MIN_Y, 0);
+	}
+
+	function getSEScreenVector() {
+		return new THREE.Vector3(GridLine.MAX_X, GridLine.MIN_Y, 0);
+	}
+
+	function drawGrid(numHorizontalGridLines, numVerticalLines, numZLines) {
+		var gridBlockSize = {
+			HORIZONTAL: GridLine.DISPLAY_HEIGHT / numHorizontalGridLines,
+			VERTICAL: GridLine.DISPLAY_WIDTH / numVerticalLines
+		}
+
+		var hLine, zLine;
+
+		// horizontal lines
+		var hGeometry = new THREE.Geometry();
+		hGeometry.vertices.push(
+			getNWScreenVector(),
+			getNEScreenVector()
+			// new THREE.Vector3(GridLine.MIN_X,SceneSettings.HEIGHT,0),
+			// new THREE.Vector3(GridLine.MAX_X,SceneSettings.HEIGHT,0)
+		);
+
+		var vGeometry = new THREE.Geometry();
+		vGeometry.vertices.push(
+			getSEScreenVector(),
+			getNEScreenVector()
+			// new THREE.Vector3(GridLine.MIN_X,-SceneSettings.HEIGHT,0),
+			// new THREE.Vector3(GridLine.MIN_X,SceneSettings.HEIGHT,0)
+		);
+
+		var hLines = [];
+		var vLines = [];
+
+		for( var z = 0; z <= numZLines; z++ ) {	
+			for( var h = 0; h <= numHorizontalGridLines; h++ ) {
+				var hLine = new THREE.Line( hGeometry, GridLine.MATERIAL );
+				hLine.position.y = -h * gridBlockSize.HORIZONTAL;
+				hLine.position.z = -z * gridBlockSize.HORIZONTAL;
+				hLine.material.transparent = true;
+				// line.material.opacity = 1.0 - (1/(numZLines / z));
+				// line.material.opacity = 1.0 - (1/(numZLines));
+				// console.log(line.material.opacity);
+				scene.add(hLine);
+
+				if(z === 0) hLines.push(hLine);
+			}
+
+			for(var v = 0; v <= numVerticalLines; v++) {
+				var vLine = new THREE.Line( vGeometry, GridLine.MATERIAL );
+				vLine.position.x = -v * gridBlockSize.HORIZONTAL;
+				vLine.position.z = -z * gridBlockSize.HORIZONTAL;
+				scene.add(vLine);
+
+				if(z === 0) vLines.push(vLine);
+			}		
+		}
+
+		for( var lh = 0; lh < hLines.length; lh++ ) {
+			for(var lv = 0; lv < vLines.length; lv++ ) {
+				var zGeometry = new THREE.Geometry();
+				zGeometry.vertices.push(
+					new THREE.Vector3(0,0,GridLine.MIN_Z),
+					new THREE.Vector3(vGeometry.vertices[0].x + vLines[lv].position.x, hGeometry.vertices[0].y + hLines[lh].position.y, hLines[0].position.z)
+				);
+				var zLine = new THREE.Line( zGeometry, GridLine.MATERIAL );
+				scene.add(zLine);
+			}
+		}
+	}
+	drawGrid(GridLine.NUM_HORIZONTAL_LINES, GridLine.NUM_VERTICAL_LINES, GridLine.NUM_Z_LINES);
+
+	// render loop //
+	function animate() {
+		requestAnimationFrame(animate);
+		controls.update();
+	}
+	animate();
+
+	function render() {
+		renderer.render(scene, camera);
+	}
+	render();
+
+	// event listeners //
+	window.addEventListener( 'resize', onWindowResize, false );
+
+	function onWindowResize() {
+		SceneSettings.WIDTH = window.innerWidth;
+		SceneSettings.HEIGHT = window.innerHeight;
+		CameraSettings.ASPECT = SceneSettings.WIDTH / SceneSettings.HEIGHT;
+		camera.updateProjectionMatrix();
+
+		renderer.setSize(SceneSettings.WIDTH, SceneSettings.HEIGHT);
+		render();
+	}
+
+	</script>
+</html>
+
