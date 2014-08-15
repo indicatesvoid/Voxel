@@ -1,0 +1,234 @@
+<!-- 
+notes:
+http://stackoverflow.com/questions/13055214/mouse-canvas-x-y-to-three-js-world-x-y-z
+http://soledadpenades.com/articles/three-js-tutorials/object-picking/
+-->
+
+<html>
+	<head>
+		<title>Three.js Test</title>
+		<style>
+			canvas { 
+				width: 100%; 
+				height: 100%; 
+			}
+
+			html, body {
+				border: 0px;
+				margin: 0px;
+				padding: 0px;
+			}
+		</style>
+	</head>
+	<body>
+	<script src="js/three.min.js"></script>
+	<script src="js/OrbitControls.js"></script>
+	<script src="js/jquery.min.js"></script>
+	<script>
+	// settings //
+	var SceneSettings = {
+		WIDTH: window.innerWidth,
+		HEIGHT: window.innerHeight
+	}
+
+	var CameraSettings = {
+		VIEW_ANGLE: 45,
+		ASPECT: SceneSettings.WIDTH / SceneSettings.HEIGHT,
+		NEAR: 0.1,
+		FAR: 10000
+	}
+
+	var WorldSpace = {
+		MOUSE_2D: new THREE.Vector3( 0, 10000, 0.5 ),
+		MOUSE_3D: null,
+		RAYCASTER: null,
+
+		TARGET: new THREE.Vector3( 0, 200, 0 ),
+		NORMAL_MATRIX: new THREE.Matrix3()
+	}
+
+	// scene //
+	var scene = new THREE.Scene();
+	// scene.fog = new THREE.FogExp2( 0xCCCCCC, 0.002 );
+
+	// camera //
+	var camera = new THREE.PerspectiveCamera(
+		CameraSettings.VIEW_ANGLE,
+		CameraSettings.ASPECT,
+		CameraSettings.NEAR,
+		CameraSettings.FAR);
+
+	// the camera starts at (0,0,0), 
+	// so pull it back a little
+	// camera.position.z = 15;
+	camera.position.y = 800;
+	camera.position.x = 1400 * Math.sin( CameraSettings.VIEW_ANGLE * Math.PI / 360 );
+	camera.position.z = 1400 * Math.cos( CameraSettings.VIEW_ANGLE * Math.PI / 360 );
+
+	var target = new THREE.Vector3( 0, 200, 0 );
+	camera.lookAt( target );
+
+	scene.add(camera);
+
+	// lights //
+	var light = new THREE.PointLight(0xFFFFFF);
+	light.position.set(10,50,130);
+	scene.add(light);
+
+	light = new THREE.PointLight(0xFFFFFF);
+	light.position.set(-10,-50,-130);
+	scene.add(light);
+
+	// controls //
+	// var controls = new THREE.OrbitControls(camera);
+	// controls.damping = 0.2;
+	// controls.addEventListener('change', render);
+
+	// renderer //
+	// var renderer = new THREE.WebGLRenderer();
+	var renderer = new THREE.CanvasRenderer();
+	renderer.setSize(SceneSettings.WIDTH, SceneSettings.HEIGHT);
+	renderer.setClearColor( 0xFFFFFF );
+
+	document.body.appendChild(renderer.domElement);
+
+	// geometry //
+	var objects = [];
+
+	var Cube = {
+		GEOMETRY: new THREE.BoxGeometry( 50, 50, 50 ),
+		MATERIAL: new THREE.MeshLambertMaterial( { color: 0x0FF80, overdraw: 0.5 })
+	}
+
+	// grid 
+	var size = 500, step = 50;
+
+	var geometry = new THREE.Geometry();
+
+	for ( var i = - size; i <= size; i += step ) {
+
+		geometry.vertices.push( new THREE.Vector3( - size, 0, i ) );
+		geometry.vertices.push( new THREE.Vector3(   size, 0, i ) );
+
+		geometry.vertices.push( new THREE.Vector3( i, 0, - size ) );
+		geometry.vertices.push( new THREE.Vector3( i, 0,   size ) );
+
+	}
+
+	var material = new THREE.LineBasicMaterial( { color: 0x000000, opacity: 0.2 } );
+
+	var line = new THREE.Line( geometry, material );
+	line.type = THREE.LinePieces;
+	scene.add( line );
+
+	// create an invisible plane for intersect detection
+	var plane = new THREE.Mesh( new THREE.PlaneGeometry( 1000, 1000 ), new THREE.MeshBasicMaterial({ color: 0xFF0000 }) );
+	plane.rotation.x = - Math.PI / 2;
+	plane.visible = true;
+	plane.material.transparent = true;
+	plane.material.opacity = 0.05;
+	scene.add( plane );
+	objects.push(plane);
+
+	// var Cube = {
+	// 	GEOMETRY: new THREE.BoxGeometry(50,50,50),
+	// 	MATERIAL: new THREE.MeshLambertMaterial({ color: 0xCC0000, overdraw: 0.5 }),
+	// 	MESH: null
+	// }
+
+	var mouseCube = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
+	scene.add(mouseCube);
+
+	// projector //
+	var projector = new THREE.Projector();
+
+	// render loop //
+	function animate() {
+		requestAnimationFrame(animate);
+		// controls.update();
+	}
+	animate();
+
+	function render() {
+		WorldSpace.RAYCASTER = projector.pickingRay( WorldSpace.MOUSE_2D.clone(), camera );
+
+		renderer.render(scene, camera);
+	}
+	render();
+
+	// event listeners //
+	window.addEventListener( 'resize', onWindowResize, false );
+	window.addEventListener( 'mousemove', onMouseMove, false );
+	window.addEventListener( 'mousedown', onMouseDown, false );
+
+	function onWindowResize() {
+		SceneSettings.WIDTH = window.innerWidth;
+		SceneSettings.HEIGHT = window.innerHeight;
+		CameraSettings.ASPECT = SceneSettings.WIDTH / SceneSettings.HEIGHT;
+		camera.updateProjectionMatrix();
+
+		renderer.setSize(SceneSettings.WIDTH, SceneSettings.HEIGHT);
+		render();
+	}
+
+	
+	function onMouseMove(e) {
+		e.preventDefault();
+
+		WorldSpace.MOUSE_2D.x = ( e.clientX / window.innerWidth ) * 2 - 1;
+		WorldSpace.MOUSE_2D.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
+
+		var intersects = WorldSpace.RAYCASTER.intersectObjects( scene.children );
+
+		if( intersects.length > 0 ) {
+			// console.log("mouse intersected scene.children");
+			// mouseCube.position.set(intersects[0].x, intersects[0].y, mouseCube.z);
+			// ?
+		}
+
+		// reference code for simple movement of 3D object
+		// based on mouse position — keeping for posterity
+		// var planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+		// convert mouse coordinates to cartesian
+		// var vector = new THREE.Vector3(
+		// 	( e.clientX / window.innerWidth ) * 2 - 1,
+		// 	- ( e.clientY / window.innerHeight ) * 2 + 1,
+		// 	0.5
+		// );
+
+		// // cast a ray and find where it intersects z plane
+		// var raycaster = projector.pickingRay( vector, camera );
+		// var pos = raycaster.ray.intersectPlane( planeZ );
+
+		// // set position of cube and render
+		// Cube.MESH.position.set(pos.x, pos.y, pos.z);
+		render();
+	}
+
+	function onMouseDown(e) {
+		e.preventDefault();
+
+		var intersects = WorldSpace.RAYCASTER.intersectObjects( objects );
+
+		if( intersects.length === 0) {
+			console.log("NO INTERSECTS");
+			return;
+		}
+		else var intersect = intersects[0];
+
+		WorldSpace.NORMAL_MATRIX.getNormalMatrix( intersect.object.matrixWorld );
+
+		var normal = intersect.face.normal.clone();
+		normal.applyMatrix3( WorldSpace.NORMAL_MATRIX ).normalize();
+
+		var voxel = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
+		voxel.position.addVectors( intersect.point, normal );
+		voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
+
+		scene.add(voxel);
+		objects.push(voxel);
+		render();
+	}
+	</script>
+	</body>
+</html>
