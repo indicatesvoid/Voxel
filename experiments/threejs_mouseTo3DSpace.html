@@ -44,6 +44,7 @@ http://soledadpenades.com/articles/three-js-tutorials/object-picking/
 		RAYCASTER: null,
 
 		TARGET: new THREE.Vector3( 0, 200, 0 ),
+		NORMAL: null,
 		NORMAL_MATRIX: new THREE.Matrix3()
 	}
 
@@ -71,13 +72,22 @@ http://soledadpenades.com/articles/three-js-tutorials/object-picking/
 	scene.add(camera);
 
 	// lights //
-	var light = new THREE.PointLight(0xFFFFFF);
-	light.position.set(10,50,130);
-	scene.add(light);
+	var ambientLight = new THREE.AmbientLight( 0x606060 );
+	scene.add( ambientLight );
 
-	light = new THREE.PointLight(0xFFFFFF);
-	light.position.set(-10,-50,-130);
-	scene.add(light);
+	var directionalLight = new THREE.DirectionalLight( 0xffffff );
+	directionalLight.position.x = Math.random() - 0.5;
+	directionalLight.position.y = Math.random() - 0.5;
+	directionalLight.position.z = Math.random() - 0.5;
+	directionalLight.position.normalize();
+	scene.add( directionalLight );
+
+	var directionalLight = new THREE.DirectionalLight( 0x808080 );
+	directionalLight.position.x = Math.random() - 0.5;
+	directionalLight.position.y = Math.random() - 0.5;
+	directionalLight.position.z = Math.random() - 0.5;
+	directionalLight.position.normalize();
+	scene.add( directionalLight );
 
 	// controls //
 	// var controls = new THREE.OrbitControls(camera);
@@ -96,9 +106,11 @@ http://soledadpenades.com/articles/three-js-tutorials/object-picking/
 	var objects = [];
 
 	var Cube = {
-		GEOMETRY: new THREE.BoxGeometry( 50, 50, 50 ),
+		SIZE: 50,
+		GEOMETRY: null,
 		MATERIAL: new THREE.MeshLambertMaterial( { color: 0x0FF80, overdraw: 0.5 })
 	}
+	Cube.GEOMETRY = new THREE.BoxGeometry( 50, 50, 50 );
 
 	// grid 
 	var size = 500, step = 50;
@@ -178,12 +190,17 @@ http://soledadpenades.com/articles/three-js-tutorials/object-picking/
 		WorldSpace.MOUSE_2D.x = ( e.clientX / window.innerWidth ) * 2 - 1;
 		WorldSpace.MOUSE_2D.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
 
-		var intersects = WorldSpace.RAYCASTER.intersectObjects( scene.children );
+		var intersects = WorldSpace.RAYCASTER.intersectObjects( objects );
 
-		if( intersects.length > 0 ) {
-			// console.log("mouse intersected scene.children");
-			// mouseCube.position.set(intersects[0].x, intersects[0].y, mouseCube.z);
-			// ?
+		if(intersects.length > 0) {
+			var intersect = intersects[0];
+			WorldSpace.NORMAL_MATRIX.getNormalMatrix( intersect.object.matrixWorld );
+
+			WorldSpace.NORMAL = intersect.face.normal.clone();
+			WorldSpace.NORMAL.applyMatrix3( WorldSpace.NORMAL_MATRIX ).normalize();
+
+			mouseCube.position.addVectors( intersect.point, WorldSpace.NORMAL );
+			mouseCube.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE/2 );
 		}
 
 		// reference code for simple movement of 3D object
@@ -214,16 +231,12 @@ http://soledadpenades.com/articles/three-js-tutorials/object-picking/
 			console.log("NO INTERSECTS");
 			return;
 		}
-		else var intersect = intersects[0];
-
-		WorldSpace.NORMAL_MATRIX.getNormalMatrix( intersect.object.matrixWorld );
-
-		var normal = intersect.face.normal.clone();
-		normal.applyMatrix3( WorldSpace.NORMAL_MATRIX ).normalize();
+		else var intersect = intersects[0];	
 
 		var voxel = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
-		voxel.position.addVectors( intersect.point, normal );
-		voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
+
+		voxel.position.addVectors( intersect.point, WorldSpace.NORMAL );
+		voxel.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE/2 );
 
 		scene.add(voxel);
 		objects.push(voxel);
