@@ -90,9 +90,9 @@ http://soledadpenades.com/articles/three-js-tutorials/object-picking/
 	scene.add( directionalLight );
 
 	// controls //
-	// var controls = new THREE.OrbitControls(camera);
-	// controls.damping = 0.2;
-	// controls.addEventListener('change', render);
+	var controls = new THREE.OrbitControls(camera);
+	controls.damping = 0.2;
+	controls.addEventListener('change', render);
 
 	// renderer //
 	// var renderer = new THREE.WebGLRenderer();
@@ -142,6 +142,22 @@ http://soledadpenades.com/articles/three-js-tutorials/object-picking/
 	scene.add( plane );
 	objects.push(plane);
 
+	// var planeVertical = new THREE.Mesh( new THREE.PlaneGeometry( 1000, 1000 ), new THREE.MeshBasicMaterial({ color: 0xFF0000 }) );
+	// planeVertical.rotation.x = - Math.PI / 2;
+	// planeVertical.rotation.y = Math.PI / 2;
+	// planeVertical.visible = true;
+	// planeVertical.material.transparent = true;
+	// planeVertical.material.opacity = 0.05;
+	// scene.add( planeVertical );
+	// objects.push(planeVertical);
+
+	var planeBoxVertical = new THREE.Mesh( new THREE.BoxGeometry(0.1, 1000, 1000), new THREE.MeshBasicMaterial({ color: 0xFF0000 }) );
+	planeBoxVertical.material.transparent = true;
+	planeBoxVertical.material.opacity = 0.05;
+	scene.add(planeBoxVertical);
+	objects.push( planeBoxVertical );
+
+
 	// var Cube = {
 	// 	GEOMETRY: new THREE.BoxGeometry(50,50,50),
 	// 	MATERIAL: new THREE.MeshLambertMaterial({ color: 0xCC0000, overdraw: 0.5 }),
@@ -157,7 +173,7 @@ http://soledadpenades.com/articles/three-js-tutorials/object-picking/
 	// render loop //
 	function animate() {
 		requestAnimationFrame(animate);
-		// controls.update();
+		controls.update();
 	}
 	animate();
 
