@@ -1,0 +1,70 @@
+<!--
+Following along with:
+http://adrianmejia.com/blog/2012/09/11/backbone-dot-js-for-absolute-beginners-getting-started
+-->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Hello World in Backbone.js</title>
+</head>
+<body>
+  <!-- ========= -->
+  <!-- Your HTML -->
+  <!-- ========= -->
+  <div id="container">
+  Loading...
+  </div>
+
+  <!-- ========= -->
+  <!-- Libraries -->
+  <!-- ========= -->
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" type="text/javascript"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js" type="text/javascript"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/backbone.js/0.9.2/backbone-min.js" type="text/javascript"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/backbone-localstorage.js/1.0/backbone.localStorage-min.js" type="text/javascript"></script>  
+  
+  <!-- =============== -->
+  <!-- Javascript code -->
+  <!-- =============== -->
+  <script type="text/javascript">
+    // create a backbone view
+    // views in backbone are similar to controllers
+    // in other MVC frameworks
+    var AppView = Backbone.View.extend({
+      // every view has an associated element in which
+      // content will be rendered
+      el: '#container',
+
+      // use underscore templates
+      // can use place holder <%= %> and <%- %> to dynamically 
+      // insert data. The later allows for HTML escape while the 
+      // first one doesn’t. Moreover, you can use <% %> to 
+      // run any javascript code.
+      //
+      // placeholder 'who' will be substituted later
+      template: _.template("<h3>Hello <%= who %></h3>"),
+
+      // init gets called when the view is instantiated
+      initialize: function() {
+        this.render();
+      },
+
+      // render our view
+      render: function() {
+        // the el property we defined before gets
+        // cached as a jQuery object $el
+        // render the template, defining the 'who'
+        // variable we used as placeholder earlier
+        this.$el.html(this.template({ who: 'world!' }));
+      }
+    });
+
+    // instantiate our view
+    var appView = new AppView();
+  </script>
+  
+</body>
+</html>
