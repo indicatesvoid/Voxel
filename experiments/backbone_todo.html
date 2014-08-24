@@ -39,6 +39,7 @@ http://adrianmejia.com/blog/2012/09/11/backbone-dot-js-for-absolute-beginners-ge
       <input class="toggle" type="checkbox">
       <label><%- title %></label>
       <input class="edit" value="<%- title %>">
+      <button class="destroy">remove</button>
     </div>
   </script>
 
@@ -67,6 +68,10 @@ http://adrianmejia.com/blog/2012/09/11/backbone-dot-js-for-absolute-beginners-ge
       defaults: {
         title: '',
         completed: false
+      },
+
+      toggle: function() {
+        this.save({ completed: !this.get('completed') });
       }
     })
 
@@ -98,13 +103,23 @@ http://adrianmejia.com/blog/2012/09/11/backbone-dot-js-for-absolute-beginners-ge
 
       initialize: function() {
         this.model.on('change', this.render, this);
+        this.model.on('destroy', this.remove, this);
       },
 
       events: {
-        // 'keypress #new-todo' : 'createTodoOnEnter'
         'dblclick label' : 'edit',
         'keypress .edit' : 'updateOnEnter',
-        'blur .edit' : 'close'
+        'blur .edit' : 'close',
+        'click .toggle' : 'toggleCompleted',
+        'click .destroy' : 'destroy'
+      },
+
+      toggleCompleted: function() {
+        this.model.toggle();
+      },
+
+      destroy: function() {
+        this.model.destroy();
       },
 
       edit: function() {
@@ -130,6 +145,7 @@ http://adrianmejia.com/blog/2012/09/11/backbone-dot-js-for-absolute-beginners-ge
     App.AppView = Backbone.View.extend({
       el: '#todoapp',
       initialize: function() {
+        this.input = this.$('#new-todo');
         // when new items are added to the collection,
         // render them
         App.todoList.on('add', this.addOne, this);
