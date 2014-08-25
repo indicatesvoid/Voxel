@@ -1,13 +1,44 @@
 // create namespaces //
-var Stage = { }
+var stage, gui = { }
 
 // init on document ready //
 $(document).ready(function() {
-	Stage = new stage();
+	stage = new Stage();
+	gui = new Gui();
+
+	gui.create();
+	stage.setCubeColor(gui.getColor());
 });
 
 // functions n' such //
-function stage() {
+function Gui() {
+	var _color = '#'+Math.floor(Math.random()*16777215).toString(16);
+
+	this.getColor = function() {
+		return _color;
+	}
+
+	this.create = function() {
+		var _onSave = function() {};
+
+		Object.defineProperty(this, "color", { get: function() { return _color } } );
+
+		var o = {
+			'Color'		: _color
+		}
+
+		var _gui = new dat.GUI({ autoPlace: false });
+		_gui.addColor(o, 'Color').onChange(function(val){ 
+			_color = val; 
+			stage.setCubeColor(val);
+		});
+
+		var div = document.getElementById('gui');
+		div.appendChild(_gui.domElement);
+	}
+}
+
+function Stage() {
 	var canvasContainer = $('#main');
 	var canvasElement = $('#cnvs');
 
@@ -46,9 +77,21 @@ function stage() {
 	var Cube = {
 		SIZE: 50,
 		GEOMETRY: null,
-		MATERIAL: new THREE.MeshLambertMaterial({ color: 0x0FF80, overdraw: 0.5 })
+		COLOR: 0x0FF80,
+		MATERIAL: null,
+		OBJECTS: []
 	}
+	Cube.MATERIAL = new THREE.MeshLambertMaterial({ color: Cube.COLOR, overdraw: 0.5 })
 	Cube.GEOMETRY = new THREE.BoxGeometry( Cube.SIZE, Cube.SIZE, Cube.SIZE );
+
+	this.setCubeColor = function(color) {
+		Cube.COLOR = color;
+		Cube.MATERIAL.color.set(color);
+		for(var i=0; i<Cube.OBJECTS.length; i++) {
+			Cube.OBJECTS[i].material.color.set(color);
+		}
+		render();
+	}
 
 	// setup scene //
 	var scene = new THREE.Scene();
@@ -76,16 +119,10 @@ function stage() {
 	scene.add( ambientLight );
 
 	var directionalLight = new THREE.DirectionalLight( 0xffffff );
-	directionalLight.position.x = Math.random() - 0.5;
-	directionalLight.position.y = Math.random() - 0.5;
-	directionalLight.position.z = Math.random() - 0.5;
 	directionalLight.position.normalize();
 	scene.add( directionalLight );
 
 	var directionalLight = new THREE.DirectionalLight( 0x808080 );
-	directionalLight.position.x = Math.random() - 0.5;
-	directionalLight.position.y = Math.random() - 0.5;
-	directionalLight.position.z = Math.random() - 0.5;
 	directionalLight.position.normalize();
 	scene.add( directionalLight );
 
@@ -135,6 +172,7 @@ function stage() {
 
 	// create cube that will follow mouse
 	var mouseCube = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
+	Cube.OBJECTS.push(mouseCube);
 	scene.add(mouseCube);
 
 	// setup projector //
@@ -211,6 +249,7 @@ function stage() {
 
 		scene.add(voxel);
 		objects.push(voxel);
+		Cube.OBJECTS.push(voxel);
 		render();
 	}
 }

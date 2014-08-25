@@ -3,6 +3,7 @@ extends layout
 block content
 	#header
 	#main
+	#gui
 		//- canvas#cnvs
 
 block scripts
@@ -12,11 +13,13 @@ block scripts
 	script(src="/javascripts/libs/backbone-min.js")
 	script(src="/javascripts/libs/three.min.js")
 	script(src="/javascripts/libs/OrbitControls.js")
+	script(src="/javascripts/libs/dat.gui.min.js")
 
 	//- uncomment for production -- use CDN hosted libs
 	//- script(src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js")
 	//- script(src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js")
 	//- script(src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js")
 	//- script(src="//ajax.googleapis.com/ajax/libs/threejs/r67/three.min.js")
+	//- script(src="//cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5/dat.gui.js");
 
 	script(src="/javascripts/voxel.js")
