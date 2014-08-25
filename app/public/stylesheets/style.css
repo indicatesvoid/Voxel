@@ -1,0 +1,17 @@
+a {
+  color: #00B7FF;
+}
+
+html, body {
+	/* remove white space around border */
+	border: 0px;
+	margin: 0px;
+	padding: 0px;
+}
+
+/* our main drawing canvas for three.js */
+#cnvs, canvas {
+	width: 100%;
+	height: 100%;
+}
+
