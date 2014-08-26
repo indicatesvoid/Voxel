@@ -64,7 +64,8 @@ function Stage() {
 		RAYCASTER: null,
 		TARGET: new THREE.Vector3( 0, 200, 0 ),
 		NORMAL: null,
-		NORMAL_MATRIX: new THREE.Matrix3()
+		NORMAL_MATRIX: new THREE.Matrix3(),
+		INTERSECTS: null
 	}
 
 	var Grid = {
@@ -79,10 +80,14 @@ function Stage() {
 		GEOMETRY: null,
 		COLOR: 0x0FF80,
 		MATERIAL: null,
-		OBJECTS: []
+		OBJECTS: [],
+
+		OUTLINE_MATERIAL: new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.BackSide }),
+		OUTLINE_MESH: null
 	}
 	Cube.MATERIAL = new THREE.MeshLambertMaterial({ color: Cube.COLOR, overdraw: 0.5 })
 	Cube.GEOMETRY = new THREE.BoxGeometry( Cube.SIZE, Cube.SIZE, Cube.SIZE );
+
 
 	this.setCubeColor = function(color) {
 		Cube.COLOR = color;
@@ -90,6 +95,7 @@ function Stage() {
 		for(var i=0; i<Cube.OBJECTS.length; i++) {
 			Cube.OBJECTS[i].material.color.set(color);
 		}
+		mouseCube.material.color.set(color);
 		render();
 	}
 
@@ -172,7 +178,7 @@ function Stage() {
 
 	// create cube that will follow mouse
 	var mouseCube = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
-	Cube.OBJECTS.push(mouseCube);
+	// Cube.OBJECTS.push(mouseCube);
 	scene.add(mouseCube);
 
 	// setup projector //
@@ -191,10 +197,34 @@ function Stage() {
 	}
 	render();
 
+	// intersect test //
+	function testForPlaneIntersects() {
+		WorldSpace.INTERSECTS = WorldSpace.RAYCASTER.intersectObjects( objects );
+	}
+
+	function testForCubeIntersects() {
+		WorldSpace.INTERSECTS = WorldSpace.RAYCASTER.intersectObjects( Cube.OBJECTS );
+	}
+
+	function createOutline(geometry, x, y, z) {
+		scene.remove(Cube.OUTLINE_MESH);
+
+		Cube.OUTLINE_MATERIAL.visible = true;
+		Cube.OUTLINE_MESH = null;
+		Cube.OUTLINE_MESH = new THREE.Mesh( geometry, Cube.OUTLINE_MATERIAL );
+		Cube.OUTLINE_MESH.position.x = x;
+		Cube.OUTLINE_MESH.position.y = y;
+		Cube.OUTLINE_MESH.position.z = z;
+		Cube.OUTLINE_MESH.scale.multiplyScalar(1.05);
+
+		scene.add(Cube.OUTLINE_MESH);
+	}
+
 	// setup event listeners //
 	window.addEventListener( 'resize', onWindowResize, false );
 	window.addEventListener( 'mousemove', onMouseMove, false );
 	window.addEventListener( 'mousedown', onMouseDown, false );
+	window.addEventListener( 'contextmenu', onRightClick, false );
 
 	// setup event responders //
 	function onWindowResize() {
@@ -215,17 +245,42 @@ function Stage() {
 		WorldSpace.MOUSE_2D.x = ( e.clientX / window.innerWidth ) * 2 - 1;
 		WorldSpace.MOUSE_2D.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
 
-		var intersects = WorldSpace.RAYCASTER.intersectObjects( objects );
+		testForPlaneIntersects();
 
-		if(intersects.length > 0) {
-			var intersect = intersects[0];
+		if(WorldSpace.INTERSECTS.length > 0) {
+			mouseCube.visible = true;
+
+			var intersect = WorldSpace.INTERSECTS[0];
 			WorldSpace.NORMAL_MATRIX.getNormalMatrix( intersect.object.matrixWorld );
 
 			WorldSpace.NORMAL = intersect.face.normal.clone();
 			WorldSpace.NORMAL.applyMatrix3( WorldSpace.NORMAL_MATRIX ).normalize();
 
 			mouseCube.position.addVectors( intersect.point, WorldSpace.NORMAL );
-			mouseCube.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE/2 );
+
+			// align to grid and prevent collisions with previous objects
+			mouseCube.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE / 2 );
+
+			// see if we are intersecting with any previous cubes
+			var foundNonMouseIntersect = false;
+			for( var i=0; i<Cube.OBJECTS.length; i++) {
+				if(Cube.OBJECTS[i] == mouseCube) continue;
+				var objX = Cube.OBJECTS[i].position.x;
+				var objY = Cube.OBJECTS[i].position.y;
+				var objZ = Cube.OBJECTS[i].position.z;
+				if(mouseCube.position.x === objX && mouseCube.position.y === objY && mouseCube.position.z === objZ) {
+					// TODO -
+					// overlapping with existing cube -- don't display mouse cube,
+					// and set overlapped cube to draw outlines
+					mouseCube.visible = false;
+					createOutline(Cube.GEOMETRY, objX, objY, objZ);
+					foundNonMouseIntersect = true;
+				}
+			}
+
+			if(!foundNonMouseIntersect) {
+				scene.remove(Cube.OUTLINE_MESH);
+			}
 		}
 
 		render();
@@ -234,13 +289,13 @@ function Stage() {
 	function onMouseDown(e) {
 		e.preventDefault();
 
-		var intersects = WorldSpace.RAYCASTER.intersectObjects( objects );
+		testForPlaneIntersects();
 
-		if( intersects.length === 0) {
-			console.log("NO INTERSECTS");
+		if( WorldSpace.INTERSECTS.length === 0) {
+			// console.log("NO INTERSECTS");
 			return;
 		}
-		else var intersect = intersects[0];	
+		else var intersect = WorldSpace.INTERSECTS[0];
 
 		var voxel = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
 
@@ -248,8 +303,31 @@ function Stage() {
 		voxel.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE/2 );
 
 		scene.add(voxel);
-		objects.push(voxel);
+		// objects.push(voxel);
 		Cube.OBJECTS.push(voxel);
+		render();
+	}
+
+	function onRightClick(e) {
+		e.preventDefault();
+
+		testForCubeIntersects();
+
+		// var intersect = WorldSpace.INTERSECTS[0];
+
+		var intersects = WorldSpace.RAYCASTER.intersectObjects( Cube.OBJECTS );
+
+		for(var i=0; i<intersects.length; i++) {
+			var intersect = intersects[i];
+			console.log("removing object");
+			scene.remove( intersect.object );
+			scene.remove(Cube.OUTLINE_MESH);
+			Cube.OBJECTS.splice( Cube.OBJECTS.indexOf( intersect.object ), 1 );
+			// break;
+		}
+
+		// mouseCube.visible = true;
+
 		render();
 	}
 }
