@@ -39,7 +39,8 @@ function Gui() {
 }
 
 function Stage() {
-	var canvasContainer = $('#main');
+	var canvasContainerId = 'main';
+	var canvasContainer = $('#' + canvasContainerId);
 	var canvasElement = $('#cnvs');
 
 	var SceneSettings = {
@@ -133,7 +134,7 @@ function Stage() {
 	scene.add( directionalLight );
 
 	// setup controls //
-	var controls = new THREE.OrbitControls(camera);
+	var controls = new THREE.OrbitControls(camera, document.getElementById(canvasContainerId));
 	controls.damping = 0.2;
 	controls.addEventListener('change', render);
 
