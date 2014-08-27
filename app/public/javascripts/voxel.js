@@ -240,7 +240,7 @@ function Stage() {
 	// create cube that will follow mouse
 	var mouseCube = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
 	// Cube.OBJECTS.push(mouseCube);
-	// scene.add(mouseCube);
+	scene.add(mouseCube);
 
 	// setup projector //
 	var projector = new THREE.Projector();
@@ -353,6 +353,9 @@ function Stage() {
 		// not left mouse button (code 0);
 		if(e.button !== MouseButton.LEFT) return;
 
+		// do nothing if controls are active
+		if( controls.getState() !== controls.getStates().NONE ) return;
+
 		e.preventDefault();
 
 		testForPlaneIntersects();
@@ -367,11 +370,9 @@ function Stage() {
 
 		voxel.position.addVectors( intersect.point, WorldSpace.NORMAL );
 		voxel.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE/2 );
-		console.log("there are currently " + Cube.OBJECTS.length + " cubes in scene");
 		scene.add(voxel);
 		// objects.push(voxel);
 		Cube.OBJECTS.push(voxel);
-		console.log("there are now " + Cube.OBJECTS.length + " cubes in scene");
 		render();
 	}
 

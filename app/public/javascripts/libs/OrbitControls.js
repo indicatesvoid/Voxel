@@ -104,6 +104,14 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	var state = STATE.NONE;
 
+	this.getState = function() {
+		return state;
+	}
+
+	this.getStates = function() {
+		return STATE;
+	}
+
 	// for reset
 
 	this.target0 = this.target.clone();
