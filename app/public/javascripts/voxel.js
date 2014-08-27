@@ -79,10 +79,11 @@ function Stage() {
 	}
 
 	var Grid = {
+		START_Y: -( SceneSettings.HEIGHT / 2.35 ),
 		SIZE: 500,
 		STEP: 50,
 		BASE_GEOMETRY: new THREE.Geometry(),
-		BASE_MATERIAL: new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2 }),
+		BASE_MATERIAL: new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2, transparent: true, linewidth: 1 }),
 		GEOMETRY: new THREE.Geometry(),
 		MATERIAL: new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.035 })
 	}
@@ -102,7 +103,7 @@ function Stage() {
 
 	var Plane = {
 		SIZE: 1000,
-		MATERIAL: new THREE.MeshBasicMaterial({ color: 0x29cdd8, opacity: 0.02 }),
+		MATERIAL: new THREE.MeshBasicMaterial({ color: 0x29cdd8, opacity: 0.05 }),
 		GEOMETRY: null,
 		VISIBLE: false,
 		PLANES: []
@@ -137,9 +138,9 @@ function Stage() {
 		CameraSettings.NEAR,
 		CameraSettings.FAR);
 
-	camera.position.y = 500;
+	camera.position.y = 0;
 	camera.position.x = Math.sin( CameraSettings.VIEW_ANGLE * Math.PI / 360 );
-	camera.position.z = 1600 * Math.cos( CameraSettings.VIEW_ANGLE * Math.PI / 360 );
+	camera.position.z = 1800 * Math.cos( CameraSettings.VIEW_ANGLE * Math.PI / 360 );
 
 	// camera.lookAt( WorldSpace.TARGET );
 
@@ -168,10 +169,14 @@ function Stage() {
 	var controlsActive = false;
 	controls.addEventListener('change', render);
 
-	// setup renderer //
+	//////////////////
+	//   RENDERER   //
+	//////////////////
+	// var renderer = new THREE.WebGLRenderer({ antialiasing: true });
 	var renderer = new THREE.CanvasRenderer();
 	renderer.setSize( SceneSettings.WIDTH, SceneSettings.HEIGHT );
 	renderer.setClearColor( 0xFFFFFF );
+	renderer.shadowMapType = THREE.PCFSoftShadowMap; // options are THREE.BasicShadowMap | THREE.PCFShadowMap | THREE.PCFSoftShadowMap
 
 	// document.body.appendChild(renderer.domElement);
 	canvasContainer.append(renderer.domElement);
@@ -187,12 +192,12 @@ function Stage() {
 	// create base grid
 	for ( var i = - Grid.SIZE; i <= Grid.SIZE; i += Grid.STEP ) {
 		// x lines
-		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3( - Grid.SIZE, 0, i ) );
-		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3(   Grid.SIZE, 0, i ) );
+		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3( - Grid.SIZE, Grid.START_Y, i ) );
+		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3(   Grid.SIZE, Grid.START_Y, i ) );
 
 		// z lines
-		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3( i, 0, - Grid.SIZE ) );
-		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3( i, 0,   Grid.SIZE ) );
+		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3( i, Grid.START_Y, - Grid.SIZE ) );
+		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3( i, Grid.START_Y,   Grid.SIZE ) );
 	}
 
 	var baseGridLines = new THREE.Line( Grid.BASE_GEOMETRY, Grid.BASE_MATERIAL );
@@ -201,7 +206,7 @@ function Stage() {
 
 	// create rest of grid
 	for ( var z = - Grid.SIZE; z <= Grid.SIZE; z += Grid.STEP ) {
-		for( var y = Grid.STEP; y <= Grid.SIZE*2; y += Grid.STEP ) {
+		for( var y = Grid.START_Y+Grid.STEP; y <= (Grid.SIZE*2)+Grid.START_Y; y += Grid.STEP ) {
 		 	// x lines
 		 	Grid.GEOMETRY.vertices.push( new THREE.Vector3( - Grid.SIZE, y, z ) );
 		 	Grid.GEOMETRY.vertices.push( new THREE.Vector3(   Grid.SIZE, y, z ) );
@@ -211,13 +216,13 @@ function Stage() {
 	for ( var x = - Grid.SIZE; x <= Grid.SIZE; x += Grid.STEP ) {
 		for( var z = -Grid.SIZE; z <= Grid.SIZE; z += Grid.STEP ) {
 		 	// y lines
-			Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, 0, z ) );
-			Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, Grid.SIZE*2, z ) );
+			Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, Grid.START_Y, z ) );
+			Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, Grid.START_Y+Grid.SIZE*2, z ) );
 		}
 	}
 
 	for ( var x = - Grid.SIZE; x <= Grid.SIZE; x += Grid.STEP ) {
-		for( var y = Grid.STEP; y <= Grid.SIZE*2; y += Grid.STEP ) {
+		for( var y = Grid.START_Y+Grid.STEP; y <= (Grid.SIZE*2)+Grid.START_Y; y += Grid.STEP ) {
 		 	// z lines
 		 	Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, y, - Grid.SIZE ) );
 		 	Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, y,   Grid.SIZE ) );
@@ -229,11 +234,11 @@ function Stage() {
 	scene.add( gridLine );
 
 	// create invisble plane for intersect detection
-	createPlane(0,0);
+	createPlane(0,Grid.START_Y);
 
 	// create invisible planes for intersect detection
 	// along Y axis
-	for( var y = Grid.STEP; y <= Grid.SIZE*2; y += Grid.STEP ) {
+	for( var y = Grid.START_Y+Grid.STEP; y <= (Grid.SIZE*2)+Grid.START_Y; y += Grid.STEP ) {
 		createPlane(0, y);
 	}
 
@@ -303,6 +308,18 @@ function Stage() {
 		scene.add(Cube.OUTLINE_MESH);
 	}
 
+	////////////////////////
+	//    MISC UTILITY    //
+	////////////////////////
+	function alignMeshToGrid(mesh) {
+		mesh.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE / 2 );
+
+		// adjust for offset y-position of grid, which may not be evenly
+		// divisible by Cube.SIZE. If needed, we could also adjust for x
+		// and z positions accordingly.
+		mesh.position.y += Cube.SIZE - Math.abs(Grid.START_Y % Cube.SIZE);
+	}
+
 	///////////////////////////////
 	//   SETUP EVENT LISTENERS   //
 	///////////////////////////////
@@ -346,7 +363,7 @@ function Stage() {
 			mouseCube.position.addVectors( intersect.point, WorldSpace.NORMAL );
 
 			// align to grid and prevent collisions with previous objects
-			mouseCube.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE / 2 );
+			alignMeshToGrid(mouseCube);
 
 			// see if we are intersecting with any previous cubes
 			var foundNonMouseIntersect = false;
@@ -379,7 +396,6 @@ function Stage() {
 		// store mouse x/y position
 		mouseDownX = e.clientX;
 		mouseDownY = e.clientY;
-		console.log("mouseDown: " + mouseDownX + " , " + mouseDownY);
 	}
 
 	function onMouseUp(e) {
@@ -404,7 +420,8 @@ function Stage() {
 			var voxel = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
 
 			voxel.position.addVectors( intersect.point, WorldSpace.NORMAL );
-			voxel.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE/2 );
+			alignMeshToGrid(voxel);
+
 			scene.add(voxel);
 			// objects.push(voxel);
 			Cube.OBJECTS.push(voxel);
