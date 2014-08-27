@@ -137,11 +137,11 @@ function Stage() {
 		CameraSettings.NEAR,
 		CameraSettings.FAR);
 
-	camera.position.y = 800;
-	camera.position.x = 1400 * Math.sin( CameraSettings.VIEW_ANGLE * Math.PI / 360 );
-	camera.position.z = 1400 * Math.cos( CameraSettings.VIEW_ANGLE * Math.PI / 360 );
+	camera.position.y = 500;
+	camera.position.x = Math.sin( CameraSettings.VIEW_ANGLE * Math.PI / 360 );
+	camera.position.z = 1600 * Math.cos( CameraSettings.VIEW_ANGLE * Math.PI / 360 );
 
-	camera.lookAt( WorldSpace.TARGET );
+	// camera.lookAt( WorldSpace.TARGET );
 
 	scene.add(camera);
 
@@ -165,6 +165,7 @@ function Stage() {
 	//////////////////
 	var controls = new THREE.OrbitControls(camera, document.getElementById(canvasContainerId));
 	controls.damping = 0.2;
+	var controlsActive = false;
 	controls.addEventListener('change', render);
 
 	// setup renderer //
@@ -308,7 +309,7 @@ function Stage() {
 	window.addEventListener( 'resize', onWindowResize, false );
 	window.addEventListener( 'mousemove', onMouseMove, false );
 	window.addEventListener( 'mousedown', onMouseDown, false );
-	window.addEventListener( 'contextmenu', onRightClick, false );
+	window.addEventListener( 'mouseup', onMouseUp, false );
 
 	////////////////////////
 	//   EVENT HANDLERS   //
@@ -372,58 +373,57 @@ function Stage() {
 		render();
 	}
 
+	var mouseDownX;
+	var mouseDownY;
 	function onMouseDown(e) {
-		// do nothing if mouse button pressed is
-		// not left mouse button (code 0);
-		if(e.button !== MouseButton.LEFT) return;
-
-		// do nothing if controls are active
-		if( controls.getState() !== controls.getStates().NONE ) return;
-
-		e.preventDefault();
-
-		testForPlaneIntersects();
-
-		if( WorldSpace.INTERSECTS.length === 0) {
-			// console.log("NO INTERSECTS");
-			return;
-		}
-		else var intersect = WorldSpace.INTERSECTS[0];
-
-		var voxel = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
-
-		voxel.position.addVectors( intersect.point, WorldSpace.NORMAL );
-		voxel.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE/2 );
-		scene.add(voxel);
-		// objects.push(voxel);
-		Cube.OBJECTS.push(voxel);
-		render();
+		// store mouse x/y position
+		mouseDownX = e.clientX;
+		mouseDownY = e.clientY;
+		console.log("mouseDown: " + mouseDownX + " , " + mouseDownY);
 	}
 
-	function onRightClick(e) {
-		if(e.button !== MouseButton.RIGHT) return;
-
-		e.preventDefault();
-
-		testForCubeIntersects();
-
-		// var intersect = WorldSpace.INTERSECTS[0];
-
-		var intersects = WorldSpace.RAYCASTER.intersectObjects( Cube.OBJECTS );
-
-		console.log("there are currently " + Cube.OBJECTS.length + " cubes in scene");
-
-		for(var i=0; i<intersects.length; i++) {
-			var intersect = intersects[i];
-			console.log("removing object");
-			scene.remove( intersect.object );
-			scene.remove(Cube.OUTLINE_MESH);
-			Cube.OBJECTS.splice( Cube.OBJECTS.indexOf( intersect.object ), 1 );
-			break;
+	function onMouseUp(e) {
+		// do nothing if mouse has moved substantially
+		// since mouse down -- this indicates a drag, and
+		// is therefore likely indicative of rotating/panning the camera
+		if( e.clientX !== mouseDownX || e.clientY !== mouseDownY ) {
+			return;
 		}
 
-		// mouseCube.visible = true;
+		e.preventDefault();
+		if( e.button === MouseButton.LEFT ) {
+			testForPlaneIntersects();
 
-		render();
+			if( WorldSpace.INTERSECTS.length === 0) {
+				// console.log("NO INTERSECTS");
+				return;
+			}
+			
+			var intersect = WorldSpace.INTERSECTS[0];
+
+			var voxel = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
+
+			voxel.position.addVectors( intersect.point, WorldSpace.NORMAL );
+			voxel.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE/2 );
+			scene.add(voxel);
+			// objects.push(voxel);
+			Cube.OBJECTS.push(voxel);
+			render();
+		}
+
+		else if( e.button === MouseButton.RIGHT ) {
+			testForCubeIntersects();
+
+			var intersects = WorldSpace.RAYCASTER.intersectObjects( Cube.OBJECTS );
+			if(intersects.length <= 0) return;
+
+			var firstIntersect = intersects[0];
+
+			scene.remove( firstIntersect.object );
+			scene.remove(Cube.OUTLINE_MESH);
+			Cube.OBJECTS.splice( Cube.OBJECTS.indexOf( firstIntersect.object ), 1 );
+
+			render();
+		}
 	}
 }
