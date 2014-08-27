@@ -45,6 +45,9 @@ function Gui() {
 }
 
 function Stage() {
+	/////////////////////////
+	//   GLOBAL SETTINGS   //
+	/////////////////////////
 	var canvasContainerId = 'main';
 	var canvasContainer = $('#' + canvasContainerId);
 	var canvasElement = $('#cnvs');
@@ -107,8 +110,6 @@ function Stage() {
 	Plane.GEOMETRY = new THREE.PlaneGeometry( Plane.SIZE, Plane.SIZE );
 	Plane.MATERIAL.transparent = true;
 
-	var planes = [];
-
 	this.setCubeColor = function(color) {
 		Cube.COLOR = color;
 		Cube.MATERIAL.color.set(color);
@@ -119,13 +120,17 @@ function Stage() {
 		render();
 	}
 
-	// setup scene //
+	/////////////////
+	//    SCENE    //
+	/////////////////
 	var scene = new THREE.Scene();
 	if(SceneSettings.ENABLE_FOG) {
 		scene.fog = new THREE.FogExp2( SceneSettings.FOG_COLOR, SceneSettings.FOG_DEPTH );
 	}
 
-	// setup camera //
+	//////////////////
+	//    CAMERA    //
+	//////////////////
 	var camera = new THREE.PerspectiveCamera(
 		CameraSettings.VIEW_ANGLE,
 		CameraSettings.ASPECT,
@@ -140,7 +145,9 @@ function Stage() {
 
 	scene.add(camera);
 
-	// setup lights //
+	//////////////////
+	//    LIGHTS    //
+	//////////////////
 	var ambientLight = new THREE.AmbientLight( 0x606060 );
 	scene.add( ambientLight );
 
@@ -153,7 +160,9 @@ function Stage() {
 	directionalLight.position.normalize();
 	scene.add( directionalLight );
 
-	// setup controls //
+	//////////////////
+	//   CONTROLS   //
+	//////////////////
 	var controls = new THREE.OrbitControls(camera, document.getElementById(canvasContainerId));
 	controls.damping = 0.2;
 	controls.addEventListener('change', render);
@@ -166,8 +175,10 @@ function Stage() {
 	// document.body.appendChild(renderer.domElement);
 	canvasContainer.append(renderer.domElement);
 
-	// geometry //
-	
+
+	//////////////////
+	//   GEOMETRY   //
+	//////////////////
 	// init array of objects to test
 	// for collision against
 	var objects = [];
@@ -231,9 +242,9 @@ function Stage() {
 		plane.position.x = x;
 		plane.position.y = y;
 		plane.visible = Plane.VISIBLE;
-		planes.push( plane );
-		scene.add( planes[planes.length-1] );
-		objects.push( planes[planes.length-1] );
+		Plane.PLANES.push( plane );
+		scene.add( Plane.PLANES[Plane.PLANES.length-1] );
+		objects.push( Plane.PLANES[Plane.PLANES.length-1] );
 	}
 
 
@@ -242,10 +253,14 @@ function Stage() {
 	// Cube.OBJECTS.push(mouseCube);
 	scene.add(mouseCube);
 
-	// setup projector //
+	///////////////////
+	//   PROJECTOR   //
+	///////////////////
 	var projector = new THREE.Projector();
 
-	// render loops //
+	//////////////////////
+	//   RENDER LOOPS   //
+	//////////////////////
 	function animate() {
 		requestAnimationFrame(animate);
 		controls.update();
@@ -258,7 +273,9 @@ function Stage() {
 	}
 	render();
 
-	// intersect test //
+	///////////////////////
+	//  INTERSECT TESTS  //
+	///////////////////////
 	function testForPlaneIntersects() {
 		var collisionObjects = objects;
 		WorldSpace.INTERSECTS = WorldSpace.RAYCASTER.intersectObjects( collisionObjects );
@@ -268,6 +285,9 @@ function Stage() {
 		WorldSpace.INTERSECTS = WorldSpace.RAYCASTER.intersectObjects( Cube.OBJECTS );
 	}
 
+	////////////////////////
+	//  OUTLINE CREATION  //
+	////////////////////////
 	function createOutline(geometry, x, y, z) {
 		scene.remove(Cube.OUTLINE_MESH);
 
@@ -282,13 +302,17 @@ function Stage() {
 		scene.add(Cube.OUTLINE_MESH);
 	}
 
-	// setup event listeners //
+	///////////////////////////////
+	//   SETUP EVENT LISTENERS   //
+	///////////////////////////////
 	window.addEventListener( 'resize', onWindowResize, false );
 	window.addEventListener( 'mousemove', onMouseMove, false );
 	window.addEventListener( 'mousedown', onMouseDown, false );
 	window.addEventListener( 'contextmenu', onRightClick, false );
 
-	// setup event responders //
+	////////////////////////
+	//   EVENT HANDLERS   //
+	////////////////////////
 	function onWindowResize() {
 		// window resized -- adjust scene and renderer accordingly
 		SceneSettings.WIDTH = window.innerWidth;
