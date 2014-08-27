@@ -10,6 +10,12 @@ $(document).ready(function() {
 	stage.setCubeColor(gui.getColor());
 });
 
+var MouseButton = {
+	LEFT: 	0,
+	MIDDLE: 1,
+	RIGHT: 	2
+}
+
 // functions n' such //
 function Gui() {
 	var _color = '#'+Math.floor(Math.random()*16777215).toString(16);
@@ -72,8 +78,10 @@ function Stage() {
 	var Grid = {
 		SIZE: 500,
 		STEP: 50,
+		BASE_GEOMETRY: new THREE.Geometry(),
+		BASE_MATERIAL: new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2 }),
 		GEOMETRY: new THREE.Geometry(),
-		MATERIAL: new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2 })
+		MATERIAL: new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.035 })
 	}
 
 	var Cube = {
@@ -89,6 +97,17 @@ function Stage() {
 	Cube.MATERIAL = new THREE.MeshLambertMaterial({ color: Cube.COLOR, overdraw: 0.5 })
 	Cube.GEOMETRY = new THREE.BoxGeometry( Cube.SIZE, Cube.SIZE, Cube.SIZE );
 
+	var Plane = {
+		SIZE: 1000,
+		MATERIAL: new THREE.MeshBasicMaterial({ color: 0x29cdd8, opacity: 0.02 }),
+		GEOMETRY: null,
+		VISIBLE: false,
+		PLANES: []
+	}
+	Plane.GEOMETRY = new THREE.PlaneGeometry( Plane.SIZE, Plane.SIZE );
+	Plane.MATERIAL.transparent = true;
+
+	var planes = [];
 
 	this.setCubeColor = function(color) {
 		Cube.COLOR = color;
@@ -126,6 +145,7 @@ function Stage() {
 	scene.add( ambientLight );
 
 	var directionalLight = new THREE.DirectionalLight( 0xffffff );
+	directionalLight.position.set( 1, 1, 1 );
 	directionalLight.position.normalize();
 	scene.add( directionalLight );
 
@@ -154,11 +174,42 @@ function Stage() {
 
 	// create base grid
 	for ( var i = - Grid.SIZE; i <= Grid.SIZE; i += Grid.STEP ) {
-		Grid.GEOMETRY.vertices.push( new THREE.Vector3( - Grid.SIZE, 0, i ) );
-		Grid.GEOMETRY.vertices.push( new THREE.Vector3(   Grid.SIZE, 0, i ) );
+		// x lines
+		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3( - Grid.SIZE, 0, i ) );
+		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3(   Grid.SIZE, 0, i ) );
 
-		Grid.GEOMETRY.vertices.push( new THREE.Vector3( i, 0, - Grid.SIZE ) );
-		Grid.GEOMETRY.vertices.push( new THREE.Vector3( i, 0,   Grid.SIZE ) );
+		// z lines
+		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3( i, 0, - Grid.SIZE ) );
+		Grid.BASE_GEOMETRY.vertices.push( new THREE.Vector3( i, 0,   Grid.SIZE ) );
+	}
+
+	var baseGridLines = new THREE.Line( Grid.BASE_GEOMETRY, Grid.BASE_MATERIAL );
+	baseGridLines.type = THREE.LinePieces;
+	scene.add( baseGridLines );
+
+	// create rest of grid
+	for ( var z = - Grid.SIZE; z <= Grid.SIZE; z += Grid.STEP ) {
+		for( var y = Grid.STEP; y <= Grid.SIZE*2; y += Grid.STEP ) {
+		 	// x lines
+		 	Grid.GEOMETRY.vertices.push( new THREE.Vector3( - Grid.SIZE, y, z ) );
+		 	Grid.GEOMETRY.vertices.push( new THREE.Vector3(   Grid.SIZE, y, z ) );
+		}
+	}
+
+	for ( var x = - Grid.SIZE; x <= Grid.SIZE; x += Grid.STEP ) {
+		for( var z = -Grid.SIZE; z <= Grid.SIZE; z += Grid.STEP ) {
+		 	// y lines
+			Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, 0, z ) );
+			Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, Grid.SIZE*2, z ) );
+		}
+	}
+
+	for ( var x = - Grid.SIZE; x <= Grid.SIZE; x += Grid.STEP ) {
+		for( var y = Grid.STEP; y <= Grid.SIZE*2; y += Grid.STEP ) {
+		 	// z lines
+		 	Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, y, - Grid.SIZE ) );
+		 	Grid.GEOMETRY.vertices.push( new THREE.Vector3( x, y,   Grid.SIZE ) );
+		}
 	}
 
 	var gridLine = new THREE.Line( Grid.GEOMETRY, Grid.MATERIAL );
@@ -166,21 +217,30 @@ function Stage() {
 	scene.add( gridLine );
 
 	// create invisble plane for intersect detection
-	var plane = new THREE.Mesh( new THREE.PlaneGeometry( 1000, 1000 ), new THREE.MeshBasicMaterial({ color: 0xFF0000 }) );
-	plane.rotation.x = - Math.PI / 2;
-	plane.visible = true;
-	plane.material.transparent = true;
-	plane.material.opacity = 0.02;
-	scene.add( plane );
-	objects.push(plane);
+	createPlane(0,0);
 
-	// TODO - create invisible planes for intersect detection
+	// create invisible planes for intersect detection
 	// along Y axis
+	for( var y = Grid.STEP; y <= Grid.SIZE*2; y += Grid.STEP ) {
+		createPlane(0, y);
+	}
+
+	function createPlane(x, y) {
+		var plane = new THREE.Mesh( Plane.GEOMETRY, Plane.MATERIAL );
+		plane.rotation.x = - Math.PI / 2; // rotate from horizontal to vertical
+		plane.position.x = x;
+		plane.position.y = y;
+		plane.visible = Plane.VISIBLE;
+		planes.push( plane );
+		scene.add( planes[planes.length-1] );
+		objects.push( planes[planes.length-1] );
+	}
+
 
 	// create cube that will follow mouse
 	var mouseCube = new THREE.Mesh( Cube.GEOMETRY, Cube.MATERIAL );
 	// Cube.OBJECTS.push(mouseCube);
-	scene.add(mouseCube);
+	// scene.add(mouseCube);
 
 	// setup projector //
 	var projector = new THREE.Projector();
@@ -200,7 +260,8 @@ function Stage() {
 
 	// intersect test //
 	function testForPlaneIntersects() {
-		WorldSpace.INTERSECTS = WorldSpace.RAYCASTER.intersectObjects( objects );
+		var collisionObjects = objects;
+		WorldSpace.INTERSECTS = WorldSpace.RAYCASTER.intersectObjects( collisionObjects );
 	}
 
 	function testForCubeIntersects() {
@@ -288,6 +349,10 @@ function Stage() {
 	}
 
 	function onMouseDown(e) {
+		// do nothing if mouse button pressed is
+		// not left mouse button (code 0);
+		if(e.button !== MouseButton.LEFT) return;
+
 		e.preventDefault();
 
 		testForPlaneIntersects();
@@ -302,14 +367,17 @@ function Stage() {
 
 		voxel.position.addVectors( intersect.point, WorldSpace.NORMAL );
 		voxel.position.divideScalar( Cube.SIZE ).floor().multiplyScalar( Cube.SIZE ).addScalar( Cube.SIZE/2 );
-
+		console.log("there are currently " + Cube.OBJECTS.length + " cubes in scene");
 		scene.add(voxel);
 		// objects.push(voxel);
 		Cube.OBJECTS.push(voxel);
+		console.log("there are now " + Cube.OBJECTS.length + " cubes in scene");
 		render();
 	}
 
 	function onRightClick(e) {
+		if(e.button !== MouseButton.RIGHT) return;
+
 		e.preventDefault();
 
 		testForCubeIntersects();
@@ -318,13 +386,15 @@ function Stage() {
 
 		var intersects = WorldSpace.RAYCASTER.intersectObjects( Cube.OBJECTS );
 
+		console.log("there are currently " + Cube.OBJECTS.length + " cubes in scene");
+
 		for(var i=0; i<intersects.length; i++) {
 			var intersect = intersects[i];
 			console.log("removing object");
 			scene.remove( intersect.object );
 			scene.remove(Cube.OUTLINE_MESH);
 			Cube.OBJECTS.splice( Cube.OBJECTS.indexOf( intersect.object ), 1 );
-			// break;
+			break;
 		}
 
 		// mouseCube.visible = true;
